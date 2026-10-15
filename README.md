@@ -44,6 +44,15 @@ On Render (free web service):
 | Start command | `gunicorn app:app` |
 | Health check path | `/healthz` |
 
+### With Docker
+
+```bash
+sudo docker build -t chmod-calculator .
+sudo docker run --rm -p 8080:10000 chmod-calculator    # http://localhost:8080
+```
+
+The image installs only what `requirements.txt` lists, copies only the app code, and runs as a non-root user. On Render, choose **Docker** as the language and it builds from the `Dockerfile`.
+
 ## Security notes
 
 - Input is validated with strict patterns (3–4 octal digits or 9 permission letters, max 12 characters)
