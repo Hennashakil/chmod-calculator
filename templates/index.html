@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>chmod calculator{% if result %} — {{ result.octal }} is {{ result.symbolic }}{% endif %}</title>
+<meta name="description" content="Type a Linux permission mode like 750 or rwxr-x--- and see what owner, group and everyone else can do, with security warnings.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1B1F2A; --paper: #F6F7F4; --rule: #D9DCD4; --steel: #5F6673;
+    --allow: #2F7D4F; --deny: #C2362B; --stop: #B7791F; --info: #3B5B8C;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 1.0625rem/1.6 var(--sans); }
+  a { color: var(--ink); text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--stop); outline-offset: 3px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 22px 0; }
+  .mark { font: 700 1.2rem var(--mono); text-decoration: none; }
+  header nav { display: flex; gap: 18px; font-size: 0.95rem; }
+  h1 { font: 600 clamp(1.9rem, 4vw, 2.8rem)/1.15 var(--sans); letter-spacing: -0.02em; margin: 28px 0 10px; max-width: 20ch; }
+  .lede { color: var(--steel); margin: 0 0 28px; max-width: 58ch; }
+
+  form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  label { font-weight: 600; display: block; margin-bottom: 6px; }
+  input[type=text] { font: 500 1.4rem var(--mono); padding: 10px 14px; width: 14ch; border: 2px solid var(--ink); border-radius: 6px; background: #fff; }
+  button { font: 600 1rem var(--sans); padding: 13px 20px; border-radius: 6px; border: 0; background: var(--ink); color: var(--paper); cursor: pointer; }
+  button:hover { background: var(--allow); }
+  .presets { margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.95rem; }
+  .presets a { font: 500 0.9rem var(--mono); text-decoration: none; padding: 4px 10px; border: 1.5px solid var(--rule); border-radius: 999px; background: #fff; }
+  .presets a[aria-current] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .error { margin-top: 18px; padding: 12px 16px; border-left: 4px solid var(--deny); background: #FBEDEB; max-width: 66ch; }
+
+  .result { margin-top: 36px; border-top: 2px solid var(--ink); padding-top: 24px; }
+  .modeline { font: 700 clamp(2rem, 6vw, 3.6rem)/1 var(--mono); letter-spacing: 0.02em; margin: 0 0 6px; }
+  .modeline .t { display: inline-block; padding-bottom: 6px; border-bottom: 5px solid; margin-right: 0.18em; }
+  .t.owner { border-color: var(--ink); } .t.group { border-color: var(--steel); } .t.other { border-color: var(--stop); }
+  .sub { color: var(--steel); font: 500 1rem var(--mono); margin: 10px 0 26px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th { border-bottom: 2px solid var(--ink); font-weight: 600; }
+  td.who { font-weight: 600; white-space: nowrap; }
+  td.who code { font: 700 1rem var(--mono); margin-left: 6px; }
+  .scroll { overflow-x: auto; }
+
+  h2 { font: 600 1.25rem var(--sans); margin: 32px 0 10px; }
+  ul.warn { list-style: none; padding: 0; margin: 0; max-width: 70ch; }
+  ul.warn li { padding: 10px 14px; margin-bottom: 8px; border-left: 4px solid; background: #fff; }
+  .danger { border-color: var(--deny) !important; } .warn { border-color: var(--stop) !important; }
+  .info { border-color: var(--info) !important; } .ok { border-color: var(--allow) !important; }
+  ul.warn b { margin-right: 6px; }
+
+  pre { background: var(--ink); color: #E8EAE3; padding: 14px 18px; border-radius: 8px; overflow-x: auto; font: 400 0.92rem/1.6 var(--mono); margin: 0; }
+  code { font-family: var(--mono); }
+  footer { margin-top: 48px; padding: 28px 0 40px; border-top: 1px solid var(--rule); color: var(--steel); font-size: 0.95rem; }
+  @media (max-width: 640px) { header nav a.hide-sm { display: none; } th, td { padding: 8px 6px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="mark" href="/">chmod calculator</a>
+    <nav aria-label="Main">
+      <a href="#api">API</a>
+      <a class="hide-sm" href="https://hennashakil.github.io/whycant/">whycant</a>
+      <a href="https://github.com/Hennashakil/chmod-calculator">Source</a>
+    </nav>
+  </header>
+
+  <main>
+    <h1>What does this permission actually allow?</h1>
+    <p class="lede">Type a Linux mode as numbers (750) or letters (rwxr-x---). You’ll see what the owner, the group and everyone else can do, and any security red flags.</p>
+
+    <form action="/" method="get" role="search">
+      <div>
+        <label for="mode">Permission mode</label>
+        <input id="mode" name="mode" type="text" value="{{ mode }}" maxlength="12" autocomplete="off" spellcheck="false" inputmode="text">
+      </div>
+      <button type="submit">Explain</button>
+    </form>
+    <p class="presets">Try:
+      {% for p in presets %}<a href="/?mode={{ p }}"{% if result and result.octal == p %} aria-current="true"{% endif %}>{{ p }}</a>{% endfor %}
+    </p>
+
+    {% if error %}
+      <p class="error" role="alert">{{ error }}</p>
+    {% endif %}
+
+    {% if result %}
+    <section class="result" aria-labelledby="res-title">
+      <h2 id="res-title" class="modeline">{% for c in result.classes %}<span class="t {{ c.who }}">{{ result.symbolic[loop.index0*3:loop.index0*3+3] }}</span>{% endfor %}</h2>
+      <p class="sub">Octal {{ result.octal }}{% if result.special %}, with {{ result.special|join(" and ") }}{% endif %}</p>
+
+      <div class="scroll">
+        <table>
+          <thead><tr><th scope="col">Who</th><th scope="col">On a file, they can</th><th scope="col">On a folder, they can</th></tr></thead>
+          <tbody>
+          {% for c in result.classes %}
+            <tr><td class="who">{{ c.who|capitalize }}<code>{{ c.digit }}</code></td><td>{{ c.file|join(", ") }}</td><td>{{ c.folder|join(", ") }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Red flags</h2>
+      <ul class="warn">
+      {% for w in result.warnings %}
+        <li class="{{ w.level }}"><b>{{ {"danger": "Danger", "warn": "Careful", "info": "Note", "ok": "OK"}[w.level] }}</b>{{ w.text }}</li>
+      {% endfor %}
+      </ul>
+
+      <h2>Set it</h2>
+      <pre><code>{{ result.chmod_octal }}
+{{ result.chmod_symbolic }}</code></pre>
+    </section>
+    {% endif %}
+
+    <section id="api" aria-labelledby="api-title">
+      <h2 id="api-title">Use it from code</h2>
+      <p>The same answer as JSON. Bad input returns status 400 with an <code>error</code> field.</p>
+      <pre><code>curl {{ request.host_url }}api/mode/{{ result.octal if result else "750" }}</code></pre>
+    </section>
+  </main>
+
+  <footer>Made by <a href="https://github.com/Hennashakil">Henna Shakil</a>. It only reads what you type; it never touches any file.</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,71 @@
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+
+import pytest
+from app import app
+from modes import ModeError, explain, parse
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("750", "rwxr-x---"), ("644", "rw-r--r--"), ("0755", "rwxr-xr-x"),
+    ("4755", "rwsr-xr-x"), ("1777", "rwxrwxrwt"), ("2750", "rwxr-s---"),
+    ("4644", "rwSr--r--"), ("rwxr-x---", "rwxr-x---"), ("-rw-r--r--", "rw-r--r--"),
+    ("drwxrwxrwt", "rwxrwxrwt"),
+])
+def test_symbolic(text, expected):
+    assert explain(text)["symbolic"] == expected
+
+
+@pytest.mark.parametrize("text,octal", [("rwsr-xr-x", "4755"), ("rwxrwxrwt", "1777"), ("rw-r--r--", "644")])
+def test_round_trip(text, octal):
+    assert explain(text)["octal"] == octal
+
+
+@pytest.mark.parametrize("bad", ["", "8", "75", "7777x", "999", "rwxrwxrwz", "rm -rf /", "$(id)", "x" * 50, "../../etc/passwd"])
+def test_rejects_bad_input(bad):
+    with pytest.raises(ModeError):
+        parse(bad)
+
+
+def levels(mode):
+    return [w["level"] for w in explain(mode)["warnings"]]
+
+
+def test_warnings():
+    assert "danger" in levels("777")
+    assert "danger" in levels("666")
+    assert "danger" in levels("4755")
+    assert "info" in levels("1777")
+    assert "warn" in levels("070")          # owner locked out
+    assert levels("644") == ["ok"]
+    assert levels("750") == ["ok"]
+
+
+def test_chmod_commands():
+    r = explain("750")
+    assert r["chmod_octal"] == "chmod 750 FILE"
+    assert r["chmod_symbolic"] == "chmod u=rwx,g=rx,o= FILE"
+    assert explain("4755")["chmod_symbolic"] == "chmod u=rwxs,g=rx,o=rx FILE"
+    assert explain("1777")["chmod_symbolic"] == "chmod u=rwx,g=rwx,o=rwxt FILE"
+
+
+@pytest.fixture
+def client():
+    app.config["TESTING"] = True
+    return app.test_client()
+
+
+def test_pages(client):
+    r = client.get("/")
+    assert r.status_code == 200 and b"rwxr-x---" in r.data
+    assert r.headers["X-Frame-Options"] == "DENY"
+    r = client.get("/?mode=<script>alert(1)</script>")
+    assert r.status_code == 200 and b"<script>alert(1)" not in r.data
+    assert client.get("/healthz").get_json() == {"status": "ok"}
+
+
+def test_api(client):
+    r = client.get("/api/mode/4755")
+    assert r.status_code == 200 and r.get_json()["symbolic"] == "rwsr-xr-x"
+    r = client.get("/api/mode/nope")
+    assert r.status_code == 400 and "error" in r.get_json()
