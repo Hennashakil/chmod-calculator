@@ -37,8 +37,18 @@ def healthz():
     return {"status": "ok"}
 
 
+# Only these websites may call the API from a browser (CORS).
+ALLOWED_ORIGINS = {"https://hennashakil.github.io"}
+
+
 @app.after_request
 def security_headers(resp):
+    if request.path.startswith("/api/"):
+        origin = request.headers.get("Origin")
+        if origin in ALLOWED_ORIGINS:
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Methods"] = "GET"
+        resp.headers["Vary"] = "Origin"
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "no-referrer"

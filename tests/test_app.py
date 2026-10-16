@@ -69,3 +69,13 @@ def test_api(client):
     assert r.status_code == 200 and r.get_json()["symbolic"] == "rwsr-xr-x"
     r = client.get("/api/mode/nope")
     assert r.status_code == 400 and "error" in r.get_json()
+
+
+def test_cors_only_for_my_site(client):
+    r = client.get("/api/mode/750", headers={"Origin": "https://hennashakil.github.io"})
+    assert r.headers["Access-Control-Allow-Origin"] == "https://hennashakil.github.io"
+    assert "Origin" in r.headers["Vary"]
+    r = client.get("/api/mode/750", headers={"Origin": "https://evil.example"})
+    assert "Access-Control-Allow-Origin" not in r.headers
+    r = client.get("/", headers={"Origin": "https://hennashakil.github.io"})
+    assert "Access-Control-Allow-Origin" not in r.headers
