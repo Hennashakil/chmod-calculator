@@ -79,3 +79,23 @@ def test_cors_only_for_my_site(client):
     assert "Access-Control-Allow-Origin" not in r.headers
     r = client.get("/", headers={"Origin": "https://hennashakil.github.io"})
     assert "Access-Control-Allow-Origin" not in r.headers
+
+
+def test_beginner_breakdown():
+    owner, group, other = explain("750")["classes"]
+    assert (owner["label"], owner["sum"]) == ("Owner", "4 + 2 + 1 = 7")
+    assert (group["label"], group["sum"]) == ("Group", "4 + 1 = 5")
+    assert (other["label"], other["sum"]) == ("Everyone else", "0, every switch off")
+    assert [s["on"] for s in group["switches"]] == [True, False, True]
+    assert [s["meaning"] for s in owner["switches"]] == ["read", "change", "run"]
+    assert explain("640")["classes"][1]["sum"] == "4"
+
+
+def test_page_explains_the_basics(client):
+    r = client.get("/?mode=4755")
+    page = r.data.decode()
+    assert "New to Linux permissions?" in page
+    assert page.count('class="person') == 3
+    assert "Number: 4 + 2 + 1 = 7" in page
+    assert "special switch" in page          # s in place of x is explained
+    assert "special switch" not in client.get("/?mode=750").data.decode()

@@ -11,7 +11,7 @@
 <style>
   :root {
     --ink: #1B1F2A; --paper: #F6F7F4; --rule: #D9DCD4; --steel: #5F6673;
-    --allow: #2F7D4F; --deny: #C2362B; --stop: #B7791F; --info: #3B5B8C;
+    --allow: #2F7D4F; --deny: #C2362B; --stop: #935F0A; --info: #3B5B8C;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
     --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
@@ -58,8 +58,36 @@
 
   pre { background: var(--ink); color: #E8EAE3; padding: 14px 18px; border-radius: 8px; overflow-x: auto; font: 400 0.92rem/1.6 var(--mono); margin: 0; }
   code { font-family: var(--mono); }
+  /* Quick guide for beginners */
+  .guide { margin: 0 0 30px; padding: 20px 22px; background: #fff; border: 1.5px solid var(--rule); border-radius: 10px; }
+  .guide-title { font: 600 1.05rem var(--sans); margin: 0 0 12px; }
+  .guide ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; counter-reset: g; }
+  .guide li { counter-increment: g; }
+  .guide li::before { content: counter(g); display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--ink); color: var(--paper); font: 700 0.9rem var(--mono); margin-bottom: 6px; }
+  .guide h3 { font: 600 1rem var(--sans); margin: 0 0 4px; }
+  .guide p { margin: 0; font-size: 0.97rem; }
+  .guide dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; margin: 6px 0 0; font-size: 0.97rem; }
+  .guide dt { font: 700 1rem var(--mono); }
+  .guide dd { margin: 0; }
+
+  /* Decoded: each person's three switches */
+  .decoded { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0 0 26px; }
+  .person { background: #fff; border: 1.5px solid var(--rule); border-top: 5px solid; border-radius: 8px; padding: 14px 16px; }
+  .person.owner { border-top-color: var(--ink); } .person.group { border-top-color: var(--steel); } .person.other { border-top-color: var(--stop); }
+  .person h3 { font: 600 1.05rem var(--sans); margin: 0; }
+  .person .plain { color: var(--steel); font-size: 0.9rem; margin: 2px 0 10px; }
+  .person ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+  .person li { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto; gap: 8px; align-items: baseline; }
+  .person li code { font: 700 1.05rem var(--mono); }
+  .person li .st { font: 600 0.85rem var(--sans); }
+  .person li.on .st { color: var(--allow); } .person li.off .st { color: var(--deny); }
+  .person li.off code { color: var(--steel); }
+  .person .sum { font: 500 0.92rem var(--mono); border-top: 1px solid var(--rule); padding-top: 8px; margin: 0; }
+  .hint { color: var(--steel); font-size: 0.95rem; margin: -14px 0 22px; }
+
   footer { margin-top: 48px; padding: 28px 0 40px; border-top: 1px solid var(--rule); color: var(--steel); font-size: 0.95rem; }
   @media (max-width: 640px) { header nav a.hide-sm { display: none; } th, td { padding: 8px 6px; } }
+  @media (max-width: 760px) { .guide ol, .decoded { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>
@@ -76,6 +104,29 @@
   <main>
     <h1>What does this permission actually allow?</h1>
     <p class="lede">Type a Linux mode as numbers (750) or letters (rwxr-x---). You’ll see what the owner, the group and everyone else can do, and any security red flags.</p>
+
+    <section class="guide" aria-labelledby="guide-title">
+      <h2 id="guide-title" class="guide-title">New to Linux permissions? Read this first</h2>
+      <ol>
+        <li>
+          <h3>Three kinds of people</h3>
+          <p>Every file has an <b>owner</b> (usually whoever created it), a <b>group</b> (a team of users), and <b>everyone else</b>.</p>
+        </li>
+        <li>
+          <h3>Three switches each</h3>
+          <dl>
+            <dt>r</dt><dd>read: open and look at it</dd>
+            <dt>w</dt><dd>write: change it</dd>
+            <dt>x</dt><dd>run it as a program (on a folder: go inside)</dd>
+            <dt>-</dt><dd>that switch is off</dd>
+          </dl>
+        </li>
+        <li>
+          <h3>Numbers are a shortcut</h3>
+          <p>r = 4, w = 2, x = 1. Add up the switches that are on: <b>7</b> = 4+2+1 = rwx, <b>5</b> = 4+1 = r-x, <b>0</b> = nothing. So <b>750</b> means owner 7, group 5, everyone else 0.</p>
+        </li>
+      </ol>
+    </section>
 
     <form action="/" method="get" role="search">
       <div>
@@ -96,13 +147,29 @@
     <section class="result" aria-labelledby="res-title">
       <h2 id="res-title" class="modeline">{% for c in result.classes %}<span class="t {{ c.who }}">{{ result.symbolic[loop.index0*3:loop.index0*3+3] }}</span>{% endfor %}</h2>
       <p class="sub">Octal {{ result.octal }}{% if result.special %}, with {{ result.special|join(" and ") }}{% endif %}</p>
+      <p class="hint">The {{ result.symbolic|length }} letters are three groups of three: one group for each kind of person, below.{% if result.special %} An <code>s</code>, <code>S</code>, <code>t</code> or <code>T</code> in place of x is a special switch, explained under Red flags.{% endif %}</p>
+
+      <div class="decoded">
+      {% for c in result.classes %}
+        <section class="person {{ c.who }}" aria-label="{{ c.label }}: {{ c.bits }}">
+          <h3>{{ c.label }}: <code>{{ result.symbolic[loop.index0*3:loop.index0*3+3] }}</code></h3>
+          <p class="plain">{{ c.who_plain|capitalize }}</p>
+          <ul>
+          {% for sw in c.switches %}
+            <li class="{{ 'on' if sw.on else 'off' }}"><code>{{ sw.letter if sw.on else '-' }}</code><span>{{ sw.meaning|capitalize }}</span><span class="st">{{ 'yes' if sw.on else 'no' }}</span></li>
+          {% endfor %}
+          </ul>
+          <p class="sum">Number: {{ c.sum }}</p>
+        </section>
+      {% endfor %}
+      </div>
 
       <div class="scroll">
         <table>
           <thead><tr><th scope="col">Who</th><th scope="col">On a file, they can</th><th scope="col">On a folder, they can</th></tr></thead>
           <tbody>
           {% for c in result.classes %}
-            <tr><td class="who">{{ c.who|capitalize }}<code>{{ c.digit }}</code></td><td>{{ c.file|join(", ") }}</td><td>{{ c.folder|join(", ") }}</td></tr>
+            <tr><td class="who">{{ c.label }}<code>{{ c.digit }}</code></td><td>{{ c.file|join(", ") }}</td><td>{{ c.folder|join(", ") }}</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -116,7 +183,7 @@
       </ul>
 
       <h2>Set it</h2>
-      <pre><code>{{ result.chmod_octal }}
+      <pre tabindex="0"><code>{{ result.chmod_octal }}
 {{ result.chmod_symbolic }}</code></pre>
     </section>
     {% endif %}
@@ -124,11 +191,11 @@
     <section id="api" aria-labelledby="api-title">
       <h2 id="api-title">Use it from code</h2>
       <p>The same answer as JSON. Bad input returns status 400 with an <code>error</code> field.</p>
-      <pre><code>curl {{ request.host_url }}api/mode/{{ result.octal if result else "750" }}</code></pre>
+      <pre tabindex="0"><code>curl {{ request.host_url }}api/mode/{{ result.octal if result else "750" }}</code></pre>
     </section>
   </main>
 
-  <footer>Made by <a href="https://github.com/Hennashakil">Henna Shakil</a>. It only reads what you type; it never touches any file.</footer>
+  <footer>Made by <a href="https://hennashakil.github.io/">Henna Shakil</a>. It only reads what you type; it never touches any file.</footer>
 </div>
 </body>
 </html>

@@ -8,6 +8,8 @@ Type a Linux permission mode such as `750` or `rwxr-x---` and see, in plain Engl
 
 A small Flask web app with a JSON API. It only reads what you type; it never touches the server's files.
 
+Made for beginners too: the page starts with a 30-second guide (owner, group and everyone else; r, w and x; why 7 = 4 + 2 + 1), and every answer shows each person's three switches as yes or no, with the sum that makes their digit.
+
 ## Use it
 
 - **Web page:** enter a mode, or try a preset (644, 755, 1777, 4755 ...)

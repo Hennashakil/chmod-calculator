@@ -10,6 +10,15 @@ OCTAL_RE = re.compile(r"^[0-7]{3,4}$")
 SYMBOLIC_RE = re.compile(r"^[-dlbcps]?([r-][w-][xsS-])([r-][w-][xsS-])([r-][w-][xtT-])$")
 
 WHO = ("owner", "group", "other")
+
+# Plain words for beginners: who each set of letters is for, and what each letter means
+LABEL = {"owner": "Owner", "group": "Group", "other": "Everyone else"}
+WHO_PLAIN = {
+    "owner": "the user who owns the file (usually whoever created it)",
+    "group": "users in the file's group, like a team",
+    "other": "every other user on the computer",
+}
+SWITCHES = (("r", 4, "read"), ("w", 2, "change"), ("x", 1, "run"))
 SETUID, SETGID, STICKY = 4, 2, 1
 
 
@@ -70,6 +79,20 @@ def _abilities(value):
     return file_can or ["nothing"], dir_can or ["nothing"]
 
 
+def _switches(value):
+    """Each letter as a switch: [{letter, on, value, meaning}], plus the sum, like 4 + 1 = 5."""
+    switches = [{"letter": letter, "on": bool(value & v), "value": v, "meaning": meaning}
+                for letter, v, meaning in SWITCHES]
+    on = [str(sw["value"]) for sw in switches if sw["on"]]
+    if not on:
+        total = "0, every switch off"
+    elif len(on) == 1:
+        total = f"{on[0]}"
+    else:
+        total = f"{' + '.join(on)} = {value}"
+    return switches, total
+
+
 def _warnings(special, perms):
     owner, group, other = perms
     w = []
@@ -104,8 +127,13 @@ def explain(text):
     classes = []
     for who, value in zip(WHO, perms):
         file_can, dir_can = _abilities(value)
+        switches, total = _switches(value)
         classes.append({
             "who": who,
+            "label": LABEL[who],
+            "who_plain": WHO_PLAIN[who],
+            "switches": switches,
+            "sum": total,
             "digit": value,
             "bits": to_symbolic(0, [value, 0, 0])[:3],
             "file": file_can,
