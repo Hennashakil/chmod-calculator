@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt pytest
+      - name: Run tests
+        run: pytest -q
+
+  docker:
+    name: Docker image builds and answers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build the image
+        run: docker build -t chmod-calculator .
+      - name: Start a container
+        run: docker run -d --name app -p 8080:10000 chmod-calculator
+      - name: The container answers like the real app
+        run: |
+          for i in $(seq 1 20); do curl -fsS http://localhost:8080/healthz && break; sleep 1; done
+          curl -fsS http://localhost:8080/api/mode/4755 | grep -q '"symbolic":"rwsr-xr-x"'
+          test "$(docker exec app id -u)" != "0"   # the app must not run as root
+          echo "container OK"
+      - name: Show logs if something failed
+        if: failure()
+        run: docker logs app

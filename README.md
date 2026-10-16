@@ -1,5 +1,9 @@
 # chmod calculator
 
+[![CI](https://github.com/Hennashakil/chmod-calculator/actions/workflows/ci.yml/badge.svg)](https://github.com/Hennashakil/chmod-calculator/actions/workflows/ci.yml)
+
+**Live:** [chmod-calculator-59m0.onrender.com](https://chmod-calculator-59m0.onrender.com) (Python) and [chmod-calculator-1.onrender.com](https://chmod-calculator-1.onrender.com) (Docker)
+
 Type a Linux permission mode such as `750` or `rwxr-x---` and see, in plain English, what the owner, the group and everyone else can do, plus security red flags like `777` or setuid.
 
 A small Flask web app with a JSON API. It only reads what you type; it never touches the server's files.
@@ -10,7 +14,7 @@ A small Flask web app with a JSON API. It only reads what you type; it never tou
 - **API:** `GET /api/mode/<mode>` returns JSON; bad input returns status 400
 
 ```bash
-curl https://<your-app>.onrender.com/api/mode/4755
+curl https://chmod-calculator-59m0.onrender.com/api/mode/4755
 ```
 
 ```json
